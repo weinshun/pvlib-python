@@ -100,6 +100,7 @@ class PVSystem(object):
         Used for cell and module temperature calculations.
 
     name : None or string, default None
+        The name of the PV system.
 
     **kwargs
         Arbitrary keyword arguments.
@@ -279,11 +280,11 @@ class PVSystem(object):
 
         return physicaliam(aoi, **kwargs)
 
-    def calcparams_desoto(self, effective_irradiance, temp_cell, **kwargs):
+    def calcparams_desoto(self, effective_irradiance, temp_cell):
         """
-        Use the :py:func:`calcparams_desoto` function, the input
-        parameters and ``self.module_parameters`` to calculate the
-        module currents and resistances.
+        Use the :py:func:`calcparams_desoto` function, the input parameters,
+        and ``self.module_parameters`` to calculate the inputs to
+        :py:func:`singlediode` or its wrapper :py:meth:`~PVSystem.singlediode`.
 
         Parameters
         ----------
@@ -291,52 +292,38 @@ class PVSystem(object):
             The irradiance (W/m2) that is converted to photocurrent.
 
         temp_cell : float or Series
-            The average cell temperature of cells within a module in C.
-
-        **kwargs
-            See pvsystem.calcparams_desoto for details
+            The average cell temperature of cells within a module in degrees C.
 
         Returns
         -------
-        See pvsystem.calcparams_desoto for details
+        See pvsystem.calcparams_desoto for details.
         """
 
         kwargs = _build_kwargs(['a_ref', 'I_L_ref', 'I_o_ref', 'R_sh_ref',
                                 'R_s', 'alpha_sc', 'EgRef', 'dEgdT'],
-                                self.module_parameters)
-        
+                               self.module_parameters)
+
         return calcparams_desoto(effective_irradiance, temp_cell, **kwargs)
 
-    def sapm(self, effective_irradiance, temp_cell, **kwargs):
+    def sapm(self, effective_irradiance, temp_cell):
         """
-        Use the :py:func:`sapm` function, the input parameters,
-        and ``self.module_parameters`` to calculate
-        Voc, Isc, Ix, Ixx, Vmp/Imp.
+        Use the :py:func:`sapm` function, the input parameters, and
+        ``self.module_parameters`` to calculate Isc, Ix, Imp, Pmp, Vmp, Ixx,
+        and Voc.
 
         Parameters
         ----------
-        poa_direct : Series
-            The direct irradiance incident upon the module (W/m^2).
+        effective_irradiance : numeric
+            The irradiance (W/m2) that is converted to photocurrent.
 
-        poa_diffuse : Series
-            The diffuse irradiance incident on module.
-
-        temp_cell : Series
-            The cell temperature (degrees C).
-
-        airmass_absolute : Series
-            Absolute airmass.
-
-        aoi : Series
-            Angle of incidence (degrees).
-
-        **kwargs
-            See pvsystem.sapm for details
+        temp_cell : float or Series
+            The average cell temperature of cells within a module in degrees C.
 
         Returns
         -------
-        See pvsystem.sapm for details
+        See pvsystem.sapm for details.
         """
+
         return sapm(effective_irradiance, temp_cell, self.module_parameters)
 
     def sapm_celltemp(self, irrad, wind, temp):
@@ -513,16 +500,21 @@ class PVSystem(object):
     def singlediode(self, photocurrent, saturation_current,
                     resistance_series, resistance_shunt, nNsVth,
                     ivcurve_pnts=None):
-        """Wrapper around the :py:func:`singlediode` function.
+        """
+        Use the :py:func:`singlediode` function and the input parameters, to
+        calculate Isc, Ix, Imp, Pmp, Vmp, Ixx, and Voc, and (optionally) I-V
+        curves with the specified number of points in the positive power
+        quadrant.
 
         Parameters
         ----------
-        See pvsystem.singlediode for details
+        See pvsystem.singlediode for details.
 
         Returns
         -------
-        See pvsystem.singlediode for details
+        See pvsystem.singlediode for details.
         """
+
         return singlediode(photocurrent, saturation_current,
                            resistance_series, resistance_shunt, nNsVth,
                            ivcurve_pnts=ivcurve_pnts)
@@ -574,7 +566,7 @@ class PVSystem(object):
 
         Returns
         -------
-        scaled_data: DataFrame
+        scaled_data: DataFrame or (ordered) dict
             A scaled copy of the input data.
         """
 
@@ -1018,7 +1010,7 @@ def calcparams_desoto(effective_irradiance, temp_cell,
         Diode saturation curent in amperes at irradiance
         S and cell temperature Tcell.
 
-    resistance_series : float
+    resistance_series : numeric
         Series resistance in ohms at irradiance S and cell temperature
         Tcell.
 
@@ -1170,6 +1162,51 @@ def calcparams_desoto(effective_irradiance, temp_cell,
     Rs = R_s
 
     return IL, I0, Rs, Rsh, nNsVth
+
+
+def sdm_campanelli(F, H, **kwargs):
+    """
+    Compute the Campanelli et al. model
+
+    TODO Details
+    """
+
+    return singlediode(*get_coeffs_campanelli(F, H, **kwargs))
+
+
+def get_coeffs_campanelli(F, H, **kwargs):
+    """
+    Compute coefficients of the single diode eq. using Campanelli et al. SDM.
+
+    TODO Details
+
+    References
+    ----------
+    [1] M. B. Campanelli and B. H. Hamadani, "Calibration of a single‐diode
+    performance model without a short‐circuit temperature coefficient",
+    Energy Science and Engineering, (2018), https://doi.org/10.1002/ese3.190.
+
+    [2] M. B. Campanelli and C. R. Osterwald, "Effective Irradiance Ratios to
+    Improve I–V Curve Measurements and Diode Modeling Over a Range of
+    Temperature and Spectral and Total Irradiance",  IEEE Journal of
+    Photovoltaics, 6:1 (2015) 48-55,
+    https://doi.org/10.1109/JPHOTOV.2015.2489866.
+    """
+
+    # Series resistance and shunt conductance are assumed constant, but these
+    #  auxiliary equations may be extended in the future.
+
+    # Order matters here because some computations rely on previous ones
+    n_mod_V = kwargs['n_mod_V_0'] * H
+    i_rs_A = kwargs['i_rs_A_0'] * H**3. * \
+        np.exp(kwargs['bg_mod_eV_0'] / kwargs['n_mod_V_0'] *
+               (1. - 1. / H) * (1. - kwargs['alpha_bg_mod_0']))
+    i_ph_A = F * kwargs['i_sc_A_0'] + i_rs_A * \
+        np.expm1(F * kwargs['i_sc_A_0'] * kwargs['r_s_Ohm_0'] / n_mod_V) + \
+        kwargs['g_p_Mho_0'] * F * kwargs['i_sc_A_0'] * kwargs['r_s_Ohm_0']
+
+    return i_ph_A, i_rs_A, kwargs['r_s_Ohm_0'], 1. / kwargs['g_p_Mho_0'], \
+        n_mod_V
 
 
 def retrieve_sam(name=None, path=None):
@@ -2446,7 +2483,7 @@ def scale_voltage_current_power(data, voltage=1, current=1):
 
     Parameters
     ----------
-    data: DataFrame
+    data: DataFrame or (ordered) dict
         Must contain columns `'v_mp', 'v_oc', 'i_mp' ,'i_x', 'i_xx',
         'i_sc', 'p_mp'`.
     voltage: numeric, default 1
@@ -2461,13 +2498,14 @@ def scale_voltage_current_power(data, voltage=1, current=1):
         `'p_mp'` is scaled by `voltage * current`.
     """
 
-    # as written, only works with a DataFrame
-    # could make it work with a dict, but it would be more verbose
+    # Works with a DataFrame or (ordered) dict (e.g., output of singlediode)
     data = data.copy()
-    voltages = ['v_mp', 'v_oc']
-    currents = ['i_mp', 'i_x', 'i_xx', 'i_sc']
-    data[voltages] *= voltage
-    data[currents] *= current
+    data['v_mp'] *= voltage
+    data['v_oc'] *= voltage
+    data['i_sc'] *= current
+    data['i_x'] *= current
+    data['i_mp'] *= current
+    data['i_xx'] *= current
     data['p_mp'] *= voltage * current
 
     return data
