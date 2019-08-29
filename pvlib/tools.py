@@ -9,6 +9,10 @@ import numpy as np
 import pandas as pd
 import pytz
 
+# Ellipsoid model of the Earth
+earth_radius_equatorial = 6378137.0
+earth_radius_polar = 6356752.0
+
 
 def cosd(angle):
     """
@@ -425,3 +429,106 @@ def _golden_sect_DataFrame(params, VL, VH, func):
             raise Exception("EXCEPTION:iterations exceeded maximum (50)")
 
     return func(df, 'V1'), df['V1']
+
+
+def latitude_to_geocentric(phi):
+    """
+    Converts a geodetic (common) latitude to a geocentric latitude.
+    Latitude must be given in radians.
+    [1] https://www.oc.nps.edu/oc2902w/coord/coordcvt.pdf
+    """
+
+    a = earth_radius_equatorial
+    b = earth_radius_polar
+    return np.arctan(b**2/a**2*np.tan(phi))
+
+
+def latitude_to_geodetic(phi):
+    """
+    Converts a geocentric latitude to a geodetic (common) latitude.
+    Latitude must be given in radians.
+    [1] https://www.oc.nps.edu/oc2902w/coord/coordcvt.pdf
+    """
+
+    a = earth_radius_equatorial
+    b = earth_radius_polar
+    return np.arctan(a**2/b**2*np.tan(phi))
+
+
+def lle_to_xyz(point):
+    """
+    Converts a (lat, lon, elev) tuple into a (x, y, z) tuple.
+    The center of the earth is the origin in the xyz-space.
+    The input latitude is assumed to be a common latitude (geodetic).
+    """
+    lat = np.atleast_1d(point.T[0])
+    lon = np.atleast_1d(point.T[1])
+    elev = np.atleast_1d(point.T[2])
+
+    a_sqrd = earth_radius_equatorial**2
+    b_sqrd = earth_radius_polar**2
+
+    # convert to radians
+    phi = np.radians(lat)
+    theta = np.radians(lon)
+
+    # compute radius of earth at each point
+    r = (a_sqrd * np.cos(phi))**2 + (b_sqrd * np.sin(phi))**2
+    r = r / (a_sqrd * np.cos(phi)**2 + b_sqrd * np.sin(phi)**2)
+    r = np.sqrt(r)
+
+    h = r + elev
+    alpha = latitude_to_geocentric(phi)
+    beta = theta
+    x = h * np.cos(alpha) * np.cos(beta)
+    y = h * np.cos(alpha) * np.sin(beta)
+    z = h * np.sin(alpha)
+    v = np.stack([x, y, z], axis=1)
+    return v
+
+
+def xyz_to_lle(point):
+    """
+    Converts a (x, y, z) tuple into a (lat, lon, elev) tuple.
+    The center of the earth is the origin in the xyz-space.
+    The output latitude is assumed to be a common latitude (geodetic).
+    """
+    a_sqrd = earth_radius_equatorial**2
+    b_sqrd = earth_radius_polar**2
+
+    x = np.atleast_1d(point.T[0])
+    y = np.atleast_1d(point.T[1])
+    z = np.atleast_1d(point.T[2])
+
+    # get corresponding point on earth's surface
+
+    t = np.sqrt(a_sqrd*b_sqrd/(b_sqrd*(x**2+y**2)+a_sqrd*z**2))
+    t = t.reshape(point.shape[0], 1)
+    point_s = t * point
+    z_s = point_s.T[2]
+
+    elev = np.linalg.norm(point-point_s, axis=1)
+
+    r = np.linalg.norm(point_s, axis=1)
+
+    alpha = np.arcsin(z_s / r)
+    phi = latitude_to_geodetic(alpha)
+    lat = np.degrees(phi)
+    lon = np.degrees(np.arctan2(y, x))
+    return np.stack([lat, lon, elev], axis=1)
+
+
+def polar_to_cart(rho, phi):
+    """
+    Converts polar coordiantes to cartesian coordinates in 2-d space.
+    """
+    x = rho * np.cos(phi)
+    y = rho * np.sin(phi)
+    return(x, y)
+
+
+def round_to_nearest(x, base):
+    """
+    Helper function to round x to nearest base.
+    """
+    return base * np.round(x / base)
