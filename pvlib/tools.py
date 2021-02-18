@@ -6,6 +6,7 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import pytz
+import textwrap
 
 
 def cosd(angle):
@@ -318,3 +319,41 @@ def _golden_sect_DataFrame(params, VL, VH, func):
             raise Exception("EXCEPTION:iterations exceeded maximum (50)")
 
     return func(df, 'V1'), df['V1']
+
+
+# Enable numba JIT if it's installed, otherwise just define a no-op decorator
+def _dummy_jit(func=None, *args, **kwargs):
+    # accommodate using as either `@jit` or `@jit()`
+    def wrapper(func):
+        return func
+    if callable(func):
+        return func
+    return wrapper
+
+
+NUMBA_ACTIVE = False
+jit = _dummy_jit
+
+try:
+    import numba
+    jit = numba.jit
+    if numba.config.DISABLE_JIT == 0:
+        # NUMBA_DISABLE_JIT will turn the decorator into a no-op, but
+        # for cases like the SPA where we need to switch manually
+        # between functions, we need a flag for which branch to take:
+        NUMBA_ACTIVE = True
+except ImportError:
+    pass
+
+
+def jit_annotate(func):
+    original_docstring = func.__doc__
+    annotation = "\n".join([
+        "",
+        ".. note::",
+        "   This function can be accelerated using Numba;",
+        "   see :ref:`using_numba`.",
+    ])
+    new_docstring = textwrap.dedent(original_docstring) + annotation
+    func.__doc__ = new_docstring
+    return func

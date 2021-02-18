@@ -121,23 +121,17 @@ def has_spa_c():
 requires_spa_c = pytest.mark.skipif(not has_spa_c(), reason="requires spa_c")
 
 
-def has_numba():
-    try:
-        import numba
-    except ImportError:
-        return False
-    else:
-        vers = numba.__version__.split('.')
-        if int(vers[0] + vers[1]) < 17:
-            return False
-        else:
-            return True
+try:
+    import numba  # noqa: F401
+    has_numba = True
+except ImportError:
+    has_numba = False
 
-
-requires_numba = pytest.mark.skipif(not has_numba(), reason="requires numba")
+requires_numba = pytest.mark.skipif(not has_numba, reason="requires numba")
+requires_no_numba = pytest.mark.skipif(has_numba, reason="requires no numba")
 
 try:
-    import siphon
+    import siphon  # noqa: F401
     has_siphon = True
 except ImportError:
     has_siphon = False
