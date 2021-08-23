@@ -3,9 +3,12 @@ channels:
     - defaults
     - conda-forge
 dependencies:
+    - cftime
     - coveralls
     - cython
+    - dask
     - ephem
+    - lxml
     - netcdf4
     - nose
     - numba
@@ -27,7 +30,9 @@ dependencies:
     - shapely  # pvfactors dependency
     - siphon  # conda-forge
     - statsmodels
+    - xarray
     - pip:
         - dataclasses
         - nrel-pysam>=2.0
         - pvfactors==1.4.1
+        - git+https://github.com/pydap/pydap#egg=pydap

@@ -3,9 +3,12 @@ channels:
     - defaults
     - conda-forge
 dependencies:
+    - cftime
     - coveralls
     - cython
+    - dask
     - ephem
+    - lxml
     # - netcdf4  # pulls in a different version of numpy with ImportError
     - nose
     # - numba  # python 3.9 compat in early 2021
@@ -27,6 +30,8 @@ dependencies:
     - shapely  # pvfactors dependency
     # - siphon  # conda-forge
     - statsmodels
+    - xarray
     - pip:
         # - nrel-pysam>=2.0  # install error on windows
         - pvfactors==1.4.1
+        - git+https://github.com/pydap/pydap#egg=pydap

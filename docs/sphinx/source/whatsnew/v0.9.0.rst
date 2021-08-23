@@ -117,8 +117,11 @@ Deprecations
 
 Enhancements
 ~~~~~~~~~~~~
-* Added :func:`~pvlib.iotools.read_pvgis_hourly` and
-  :func:`~pvlib.iotools.get_pvgis_hourly` for reading and retrieving hourly
+* Added :func:`~pvlib.iotools.get_merra2` and
+  :func:`~pvlib.iotools.read_merra2` for retrieving and reading hourly
+  reanalysis data from MERRA-2. (:pull:`1247`)
+* Added :func:`~pvlib.iotools.get_pvgis_hourly` and
+  :func:`~pvlib.iotools.read_pvgis_hourly` for retrieving and reading hourly
   solar radiation data and PV power output from PVGIS. (:pull:`1186`,
   :issue:`849`)
 * Added ``map_variables`` option to :func:`~pvlib.iotools.get_pvgis_tmy` and
@@ -231,6 +234,7 @@ Documentation
 Requirements
 ~~~~~~~~~~~~
 * ``dataclasses`` is required for python 3.6
+* xarray, dask, and pydap are now optional requirements. (:pull:`1264`, :pull:`1274`)
 
 Contributors
 ~~~~~~~~~~~~
