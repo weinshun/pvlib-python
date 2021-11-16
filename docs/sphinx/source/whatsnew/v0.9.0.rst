@@ -117,6 +117,10 @@ Deprecations
 
 Enhancements
 ~~~~~~~~~~~~
+* Add :func:`~pvlib.iotools.get_era5` and
+  :func:`~pvlib.iotools.read_era5` for retrieving and reading
+  ERA5 reanalysis netcdf files from the Climate Data Store (CDS)
+  files. (:pull:`1264`)
 * Added :func:`~pvlib.iotools.read_pvgis_hourly` and
   :func:`~pvlib.iotools.get_pvgis_hourly` for reading and retrieving hourly
   solar radiation data and PV power output from PVGIS. (:pull:`1186`,
@@ -233,6 +237,8 @@ Documentation
 Requirements
 ~~~~~~~~~~~~
 * ``dataclasses`` is required for python 3.6 (:pull:`1076`)
+* ``tables`` is now required instead of optional (:issue:`1286`, :pull:`1287`)
+* xarray, dask, and cdsapi are now optional requirements. (:pull:`1264`)
 * ``h5py`` is now a required dependency.  This replaces ``tables``, which was formerly
   an optional dependency.  (:pull:`1299`, :issue:`1252`, :issue:`1286`)
 

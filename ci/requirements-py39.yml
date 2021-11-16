@@ -3,8 +3,10 @@ channels:
     - defaults
     - conda-forge
 dependencies:
+    - cdsapi
     - coveralls
     - cython
+    - dask
     - ephem
     - h5py
     # - netcdf4  # pulls in a different version of numpy with ImportError
@@ -27,6 +29,7 @@ dependencies:
     - shapely  # pvfactors dependency
     # - siphon  # conda-forge
     - statsmodels
+    - xarray
     - pip:
         # - nrel-pysam>=2.0  # install error on windows
         - pvfactors==1.4.1

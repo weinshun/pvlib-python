@@ -143,7 +143,6 @@ values_radiation_monthly = np.array([
      0.9897]])
 
 
-# @pytest.fixture
 def generate_expected_dataframe(values, columns, index, dtypes):
     """Create dataframe from arrays of values, columns and index, in order to
     use this dataframe to compare to.
@@ -244,7 +243,7 @@ def test_get_cams(requests_mock, testfile, index, columns, values, dtypes,
 
 
 def test_get_cams_bad_request(requests_mock):
-    """Test that a the correct errors/warnings ares raised for invalid
+    """Test that the correct errors/warnings are raised for invalid
     requests inputs. Also tests if the specified server url gets used"""
 
     # Subset of an xml file returned for errornous requests
