@@ -1,12 +1,16 @@
-from pathlib import Path
+import os
 import platform
 import warnings
+from functools import lru_cache
+from functools import wraps
+from importlib.resources import files
+from pathlib import Path
 
 import pandas as pd
-import os
-from pkg_resources import parse_version
 import pytest
-from functools import wraps
+from numpy import nan
+from numpy.random import uniform
+from pkg_resources import parse_version
 
 import pvlib
 from pvlib.location import Location
@@ -493,3 +497,102 @@ def sapm_module_params():
                   'IXXO': 3.18803,
                   'FD': 1}
     return parameters
+
+
+@pytest.fixture(scope="function")
+def datasheet_battery_params():
+    """
+    Define some datasheet battery parameters for testing.
+
+    The scope of the fixture is set to ``'function'`` to allow tests to modify
+    parameters if required without affecting other tests.
+    """
+    parameters = {
+        "brand": "BYD",
+        "model": "HVS 5.1",
+        "width": 0.585,
+        "height": 0.712,
+        "depth": 0.298,
+        "weight": 91,
+        "chemistry": "LFP",
+        "mode": "AC",
+        "charge_efficiency": 0.96,
+        "discharge_efficiency": 0.96,
+        "min_soc_percent": 10,
+        "max_soc_percent": 90,
+        "dc_modules": 2,
+        "dc_modules_in_series": 2,
+        "dc_energy_wh": 5120,
+        "dc_nominal_voltage": 204,
+        "dc_max_power_w": 5100,
+    }
+    return parameters
+
+
+@pytest.fixture(scope="session")
+def residential_load_profile_generator():
+    """
+    Get a sample residential hourly load profile for testing purposes.
+
+    Returns
+    -------
+    The load profile.
+    """
+    def profile_generator(index):
+        load = pd.Series(data=nan, index=index)
+        load[load.index.hour == 0] = 600
+        load[load.index.hour == 4] = 400
+        load[load.index.hour == 13] = 1100
+        load[load.index.hour == 17] = 800
+        load[load.index.hour == 21] = 1300
+        load *= uniform(low=0.6, high=1.4, size=len(load))
+        load = load.interpolate(method="spline", order=2)
+        load = load.bfill().ffill()
+        return load
+    return profile_generator
+
+
+@pytest.fixture(scope="session")
+def residential_model_chain():
+    """
+    Get a sample residential hourly generation profile for testing purposes.
+
+    Returns
+    -------
+    The generation profile.
+    """
+    name = 'Madrid'
+    latitude = 40.31672645215922
+    longitude = -3.674695061062714
+    altitude = 603
+    timezone = 'Europe/Madrid'
+    module = pvlib.pvsystem.retrieve_sam('SandiaMod')['Canadian_Solar_CS5P_220M___2009_']
+    inverter = pvlib.pvsystem.retrieve_sam('cecinverter')['Powercom__SLK_1500__240V_']
+    weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
+    weather.index = pd.date_range(
+        start=weather.index[0].replace(year=2021),
+        end=weather.index[-1].replace(year=2021),
+        freq="H",
+    )
+    weather.index = weather.index.tz_convert(timezone)
+    weather.index.name = "Timestamp"
+    location = pvlib.location.Location(
+        latitude,
+        longitude,
+        name=name,
+        altitude=altitude,
+        tz=timezone,
+    )
+    mount = pvlib.pvsystem.FixedMount(surface_tilt=latitude, surface_azimuth=180)
+    temperature_model_parameters = pvlib.temperature.TEMPERATURE_MODEL_PARAMETERS['sapm']['open_rack_glass_glass']
+    array = pvlib.pvsystem.Array(
+        mount=mount,
+        module_parameters=module,
+        modules_per_string=16,
+        strings=1,
+        temperature_model_parameters=temperature_model_parameters,
+    )
+    system = pvlib.pvsystem.PVSystem(arrays=[array], inverter_parameters=inverter)
+    mc = pvlib.modelchain.ModelChain(system, location)
+    mc.run_model(weather)
+    return mc
