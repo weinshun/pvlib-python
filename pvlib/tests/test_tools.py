@@ -1,8 +1,10 @@
 import pytest
 
+import pvlib
 from pvlib import tools
 import numpy as np
 import pandas as pd
+import pathlib
 
 
 @pytest.mark.parametrize('keys, input_dict, expected', [
@@ -120,3 +122,22 @@ def test_get_pandas_index(args, args_idx):
         assert index is None
     else:
         pd.testing.assert_index_equal(args[args_idx].index, index)
+
+
+def test_get_example_dataset_path_passes():
+    expected_dataset = '723170TYA.CSV'
+    assert pathlib.Path(pvlib.__path__[0], 'data',
+                        expected_dataset).exists()
+    assert tools.get_example_dataset_path(pathlib.Path(expected_dataset)) \
+           .name == expected_dataset
+    assert tools.get_example_dataset_path(expected_dataset).exists()
+
+
+def test_get_example_dataset_path_fails_on_not_found():
+    error_prompt = "Dataset has not been found in pvlib at .*. " \
+                   "Please check dataset name."
+    nonexistent_file = "_Texto_cualquiera.-formato-"
+    assert not pathlib.Path(pvlib.__path__[0], 'data',
+                            nonexistent_file).exists()
+    with pytest.raises(ValueError, match=error_prompt):
+        tools.get_example_dataset_path(nonexistent_file)

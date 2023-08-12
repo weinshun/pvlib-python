@@ -51,3 +51,10 @@ in some files.
 
    location.Location.from_tmy
    location.Location.from_epw
+
+Functions for locating the example data files included in pvlib.
+
+.. autosummary::
+   :toctree: generated/
+
+   tools.get_example_dataset_path

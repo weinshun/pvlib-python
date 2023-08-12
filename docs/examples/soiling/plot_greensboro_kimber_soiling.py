@@ -30,17 +30,16 @@ Examples of soiling using the Kimber model.
 # step.
 
 from datetime import datetime
-import pathlib
 from matplotlib import pyplot as plt
 from pvlib.iotools import read_tmy3
 from pvlib.soiling import kimber
-import pvlib
+from pvlib.tools import get_example_dataset_path
 
-# get full path to the data directory
-DATA_DIR = pathlib.Path(pvlib.__file__).parent / 'data'
+# get full path to the dataset file
+tmy_filepath = get_example_dataset_path('723170TYA.CSV')
 
 # get TMY3 data with rain
-greensboro, _ = read_tmy3(DATA_DIR / '723170TYA.CSV', coerce_year=1990,
+greensboro, _ = read_tmy3(tmy_filepath, coerce_year=1990,
                           map_variables=True)
 # get the rain data
 greensboro_rain = greensboro['Lprecip depth (mm)']
@@ -65,3 +64,5 @@ plt.legend(['daily rainfall [in]', 'soiling [%]'])
 plt.tight_layout()
 
 plt.show()
+
+# %%

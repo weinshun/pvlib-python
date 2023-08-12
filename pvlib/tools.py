@@ -2,11 +2,14 @@
 Collection of functions used in pvlib_python
 """
 
+import pvlib
+
 import datetime as dt
 import numpy as np
 import pandas as pd
 import pytz
 import warnings
+import pathlib
 
 
 def cosd(angle):
@@ -494,3 +497,30 @@ def get_pandas_index(*args):
         (a.index for a in args if isinstance(a, (pd.DataFrame, pd.Series))),
         None
     )
+
+
+def get_example_dataset_path(dataset):
+    """
+    Return a filepath to a dataset bundled with PVLIB with name `dataset`.
+    This utility is intended to be used in examples:
+
+        .. ipython:: python
+
+            import pvlib
+            pvlib.tools.get_example_dataset_path('surfrad-slv16001.dat')
+
+    Parameters
+    ----------
+    dataset : str or PurePath
+        Name of dataset file.
+
+    Returns
+    -------
+    path : PurePath
+        Path pointing to an example dataset file in PVLIB.
+    """
+    dataset = pathlib.Path(pvlib.__path__[0], 'data', dataset)
+    if not dataset.exists():
+        raise ValueError(f"Dataset has not been found in pvlib at {dataset}. "
+                         "Please check dataset name.")
+    return dataset
