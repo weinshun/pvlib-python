@@ -135,7 +135,8 @@ pvlib python is a `NumFOCUS Affiliated Project <https://numfocus.org/sponsored-p
    :hidden:
 
    user_guide/index
-   gallery/index
+   gallery_examples/index
+   gallery_tutorials/index
    reference/index
    whatsnew
    contributing
