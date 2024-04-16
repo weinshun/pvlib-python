@@ -223,3 +223,19 @@ def test_projected_solar_zenith_angle_datatypes(
     )
     psz = psz_func(sun_apparent_zenith, axis_azimuth, axis_tilt, axis_azimuth)
     assert isinstance(psz, cast_type)
+
+
+def test_linear_shade_loss():
+    test_data = pd.DataFrame(
+        columns=["shaded_fraction", "diffuse_ratio", "expected_loss"],
+        data=[
+            [0.11611, 0.2, 0.09289],
+            [0.11611, 0.0, 0.11611],  # no diffuse, shade fraction is the loss
+            [0.11611, 1.0, 0.00000],  # all diffuse, no shade loss
+            [0.16667, 0.2, 0.13333],
+            [0.03775, 0.2, 0.03019],
+        ]
+    )
+    loss = shading.linear_shade_loss(test_data["shaded_fraction"],
+                                     test_data["diffuse_ratio"])
+    assert_allclose(loss, test_data["expected_loss"], atol=1e-5)
