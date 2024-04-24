@@ -342,3 +342,214 @@ def projected_solar_zenith_angle(solar_zenith, solar_azimuth,
     # Eq. (5); angle between sun's beam and surface
     theta_T = np.degrees(np.arctan2(sx_prime, sz_prime))
     return theta_T
+
+
+def shaded_fraction1d(
+    solar_zenith,
+    solar_azimuth,
+    axis_azimuth,
+    shaded_row_rotation,
+    *,
+    collector_width,
+    pitch,
+    axis_tilt=0,
+    surface_to_axis_offset=0,
+    cross_axis_slope=0,
+    shading_row_rotation=None,
+):
+    r"""
+    Shaded fraction in the vertical dimension of tilted rows, or perpendicular
+    to the axis of horizontal rows.
+
+    If ``shading_row_rotation`` isn't provided, assumes both the shaded
+    row and the one blocking the direct beam
+    share the same rotation and azimuth values.
+
+    .. warning::
+        This function assumes the roles of the shaded and shading rows are
+        the same during all the day. If the rows allow for different
+        shading or shaded roles, e.g. a N-S single-axis tracker, you must
+        switch the inputs depending on the sign of the projected solar zenith
+        angle. See the Examples section below.
+
+    .. versionadded:: 0.10.5
+
+    Parameters
+    ----------
+    solar_zenith : numeric
+        Solar position zenith, in degrees.
+    solar_azimuth : numeric
+        Solar position azimuth, in degrees.
+    axis_azimuth : numeric
+        In degrees. North=0º, South=180º, East=90º, West=270º.
+        This is the rotation axis of a tracker. Consider fixed-tilt arrays as
+        a particular case of a tracker.
+    shaded_row_rotation : numeric
+        Right-handed rotation of the row receiving the shade, with respect
+        to ``axis_azimuth``. In degrees :math:`^{\circ}`.
+    collector_width : numeric
+        Vertical length of a tilted row. The returned ``shaded_fraction``
+        is the ratio of the shadow over this value.
+    pitch : numeric
+        Axis-to-axis horizontal spacing of the row.
+    axis_tilt : numeric, default 0
+        Tilt of the rows axis from horizontal. In degrees :math:`^{\circ}`.
+    surface_to_axis_offset : numeric, default 0
+        Distance between the rotating axis and the collector surface.
+    cross_axis_slope : numeric, default 0
+        Angle of the plane containing the rows' axes from
+        horizontal. Right-handed rotation with respect to ``axis_azimuth``.
+        In degrees :math:`^{\circ}`.
+    shading_row_rotation : numeric, optional
+        Right-handed rotation of the row casting the shadow, with respect
+        to ``axis_azimuth``. In degrees :math:`^{\circ}`.
+
+    Returns
+    -------
+    shaded_fraction : numeric
+        The fraction of the collector width shaded by an adjacent row. A
+        value of 1 is completely shaded and zero is no shade.
+
+    Notes
+    -----
+    All length parameters must have the same units to produce a reasonable
+    result.
+
+    Parameters are defined as follow:
+
+    .. figure:: ../../_images/Anderson_Jensen_2024_Fig3.png
+        :alt: Diagram showing the two rows and the parameters of the model.
+
+        Figure 3 of [1]_. See correspondence between this nomenclature and the
+        function parameters in the table below.
+
+    +------------------+----------------------------+---------------------+
+    | Symbol           | Parameter                  | Units               |
+    +==================+============================+=====================+
+    | :math:`\theta_1` | ``shading_row_rotation``   |                     |
+    +------------------+----------------------------+                     |
+    | :math:`\theta_2` | ``shaded_row_rotation``    | Degrees             |
+    +------------------+----------------------------+ :math:`^{\circ}`    |
+    | :math:`\beta_c`  | ``cross_axis_slope``       |                     |
+    +------------------+----------------------------+---------------------+
+    | :math:`p`        | ``pitch``                  | Any consistent      |
+    +------------------+----------------------------+ length unit across  |
+    | :math:`\ell`     | ``collector_width``        | all these           |
+    +------------------+----------------------------+ parameters, e.g.    |
+    | :math:`z_0`      | ``surface_to_axis_offset`` | :math:`m`.          |
+    +------------------+----------------------------+---------------------+
+    | :math:`f_s`      | Return value               | Dimensionless       |
+    +------------------+----------------------------+---------------------+
+
+    Examples
+    --------
+
+    **Fixed-tilt south-facing array on flat terrain**
+
+    Tilted row with a pitch of :math:`3m`, a collector width of
+    :math:`2m`, and row rotations of :math:`30^{\circ}`. In the morning.
+
+    >>> shaded_fraction1d(solar_zenith=80, solar_azimuth=104.5,
+    ...     axis_azimuth=90, shaded_row_rotation=30, shading_row_rotation=30,
+    ...     collector_width=2, pitch=3, axis_tilt=0,
+    ...     surface_to_axis_offset=0.05, cross_axis_slope=0)
+    0.6827437712114521
+
+    **Fixed-tilt north-facing array on sloped terrain**
+
+    Tilted row with a pitch of :math:`4m`, a collector width of
+    :math:`2.5m`, and row rotations of :math:`50^{\circ}` for the shaded
+    row and :math:`30^{\circ}` for the shading row. The rows are on a
+    :math:`10^{\circ}` slope, where their axis is on the most inclined
+    direction (zero cross-axis slope). Shaded in the morning.
+
+    >>> shaded_fraction1d(solar_zenith=65, solar_azimuth=75.5,
+    ...     axis_azimuth=270, shaded_row_rotation=50, shading_row_rotation=30,
+    ...     collector_width=2.5, pitch=4, axis_tilt=10,
+    ...     surface_to_axis_offset=0.05, cross_axis_slope=0)
+    0.6975923460352351
+
+    **N-S single-axis tracker on sloped terrain**
+
+    Horizontal trackers with a pitch of :math:`3m`, a collector width of
+    :math:`1.4m`, and tracker rotations of :math:`30^{\circ}` pointing east,
+    in the morning. Terrain slope is :math:`7^{\circ}` west-east (east-most
+    tracker is higher than the west-most tracker).
+
+    >>> shaded_fraction1d(solar_zenith=50, solar_azimuth=90, axis_azimuth=180,
+    ...     shaded_row_rotation=-30, collector_width=1.4, pitch=3, axis_tilt=0,
+    ...     surface_to_axis_offset=0.10, cross_axis_slope=7)
+    0.5828961460616938
+
+    Note the previous example only is valid for the shaded fraction of the
+    west-most tracker in the morning, and assuming it is the
+    shaded tracker during all the day is incorrect.
+    During the afternoon, it is the one casting the shadow onto the
+    east-most tracker.
+
+    To calculate the shaded fraction for the east-most
+    tracker, you must input the corresponding ``shaded_row_rotation``
+    in the afternoon.
+
+    >>> shaded_fraction1d(solar_zenith=50, solar_azimuth=270, axis_azimuth=180,
+    ...     shaded_row_rotation=30, collector_width=1.4, pitch=3, axis_tilt=0,
+    ...     surface_to_axis_offset=0.10, cross_axis_slope=7)
+    0.4399034444363955
+
+    You must switch the input/output depending on the
+    sign of the projected solar zenith angle. See
+    :py:func:`~pvlib.shading.projected_solar_zenith_angle` and the example
+    :ref:`sphx_glr_gallery_shading_plot_shaded_fraction1d_ns_hsat_example.py`
+
+    See also
+    --------
+    pvlib.shading.projected_solar_zenith_angle
+
+    References
+    ----------
+    .. [1] Kevin S. Anderson, Adam R. Jensen; Shaded fraction and backtracking
+        in single-axis trackers on rolling terrain. J. Renewable Sustainable
+        Energy 1 March 2024; 16 (2): 023504. :doi:`10.1063/5.0202220`
+    """
+    # For nomenclature you may refer to [1].
+
+    # rotation of row casting the shadow defaults to shaded row's one
+    if shading_row_rotation is None:
+        shading_row_rotation = shaded_row_rotation
+
+    # projected solar zenith angle
+    projected_solar_zenith = projected_solar_zenith_angle(
+        solar_zenith,
+        solar_azimuth,
+        axis_tilt,
+        axis_azimuth,
+    )
+
+    # calculate repeated elements
+    thetas_1_S_diff = shading_row_rotation - projected_solar_zenith
+    thetas_2_S_diff = shaded_row_rotation - projected_solar_zenith
+    thetaS_rotation_diff = projected_solar_zenith - cross_axis_slope
+
+    cos_theta_2_S_diff_abs = np.abs(cosd(thetas_2_S_diff))
+
+    # Eq. (12) of [1]
+    t_asterisk = (
+        0.5
+        + np.abs(cosd(thetas_1_S_diff)) / cos_theta_2_S_diff_abs / 2
+        + (
+            np.sign(projected_solar_zenith)
+            * surface_to_axis_offset
+            / collector_width
+            / cos_theta_2_S_diff_abs
+            * (sind(thetas_2_S_diff) - sind(thetas_1_S_diff))
+        )
+        - (
+            pitch
+            / collector_width
+            * cosd(thetaS_rotation_diff)
+            / cos_theta_2_S_diff_abs
+            / cosd(cross_axis_slope)
+        )
+    )
+
+    return np.clip(t_asterisk, 0, 1)
